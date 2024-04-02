@@ -10,7 +10,6 @@ namespace AdsTestService
         public static IServiceCollection AddDomain(this IServiceCollection services)
         {
             
-            services.AddSingleton<IWorkQueue, WorkQueueService>();  
             services.AddSingleton<IPlcConnectionService<AdsClient>, PlcConnectionService>();
             services.AddHostedService<Worker>();
            

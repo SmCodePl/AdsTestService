@@ -11,18 +11,16 @@ namespace AdsTestService
     {
         private readonly ILogger<Worker> _logger;
         private readonly IPlcConnectionService<AdsClient> _plcConnectionService;
-        private readonly IWorkQueue _workQueue;
 
         private uint readHandle = 0;
         private uint writeHandle = 0;
         private short pcCheckNetwork = 0;
 
         private AdsClient _client = new();
-        public Worker(ILogger<Worker> logger, IPlcConnectionService<AdsClient> plcConnectionService, IWorkQueue workQueue)
+        public Worker(ILogger<Worker> logger, IPlcConnectionService<AdsClient> plcConnectionService)
         {
             _logger = logger;
             _plcConnectionService = plcConnectionService;
-            _workQueue = workQueue;
             
         }
         public override Task StartAsync(CancellationToken cancellationToken)
@@ -42,15 +40,7 @@ namespace AdsTestService
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                if (_logger.IsEnabled(LogLevel.Information))
-                {
-                    
-                }
-
                 await CheckNetwork().ConfigureAwait(false);
-                //Task.Run(() => _workQueue.DoWork(stoppingToken));
-                //_workQueue.TryDequeue(out var workItem);
-                //await ProcessDoWorkAsync(stoppingToken);
 
 
             }
@@ -62,10 +52,6 @@ namespace AdsTestService
         {
             try
             {
-                //string tt = "'ZFYUJNDBCRJQTUEYXIUYCJYDPPPUOLCEHMAYBPKQLLBLFFVJDUHPGUNFVYEZSDNZIMMDNYJFDOYQERTWGFSAJTHY'";
-                //string tt2 = "'DQLRVKGYQXRKWMYSLNHTYMSKESESULWOOXZRMDVYBPGQZFNERUMLJQWWONFOVJCFZRRETXOLUEJTBHPZQBDURGAW'";
-                //int l = tt.Length;
-                //int l2 = tt2.Length;
                 if (_client.IsConnected)
                 {
                     if (readHandle != 0 && writeHandle != 0)
@@ -100,12 +86,6 @@ namespace AdsTestService
             _client.DeleteVariableHandle(readHandle);
             _client.DeleteVariableHandle(writeHandle);
         }
-        private async Task ProcessDoWorkAsync(CancellationToken stoppingToken)
-        {
-          
-           
-           // await Task.WhenAll(task,taskNetwork);
-
-        }
+       
     }
 }
