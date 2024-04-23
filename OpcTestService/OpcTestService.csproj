@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-OpcTestService-24d260ae-a669-43b1-a91a-959be88d70a2</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.5.374.36" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="1.5.374.36" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Core.Debug" Version="1.5.374.36" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PlcDataModel\PlcDataModel.csproj" />
+  </ItemGroup>
+</Project>

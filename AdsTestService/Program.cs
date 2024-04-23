@@ -6,8 +6,10 @@ IConfiguration configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .Build();
 
-Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configuration).CreateLogger();
-
+if (configuration.GetValue<bool>("UseSqlLogs"))
+{ 
+    Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configuration).CreateLogger();
+}
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddSerilog(Log.Logger);
 builder.Services.AddDomain();

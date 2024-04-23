@@ -1,6 +1,6 @@
 ﻿
-using AdsTestService.Interfaces;
 using AdsTestService.Services;
+using PlcDataModel.Interfaces;
 using TwinCAT.Ads;
 
 namespace AdsTestService

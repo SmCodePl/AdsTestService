@@ -1,8 +1,5 @@
-using AdsTestService.Interfaces;
-using AdsTestService.Model;
-using AdsTestService.Services;
-using System.Collections.Concurrent;
-using System.Net.Sockets;
+
+using PlcDataModel.Interfaces;
 using TwinCAT.Ads;
 
 namespace AdsTestService
@@ -42,7 +39,6 @@ namespace AdsTestService
             {
                 await CheckNetwork().ConfigureAwait(false);
 
-
             }
 
             FreeHandle();
@@ -76,8 +72,8 @@ namespace AdsTestService
 
         private void SetHandle()
         {
-            if(readHandle == 0 )    readHandle  = _client.CreateVariableHandle("Global.stCheckNetwork.nCheckNetwork");
-            if(writeHandle == 0 )   writeHandle = _client.CreateVariableHandle("Global.stCheckNetwork.nEchoCheckNetwork");
+            if(readHandle == 0 )    readHandle  = _client.CreateVariableHandle("Global.stAdsCheckNetwork.nCheckNetwork");
+            if(writeHandle == 0 )   writeHandle = _client.CreateVariableHandle("Global.stAdsCheckNetwork.nEchoCheckNetwork");
 
         }
 

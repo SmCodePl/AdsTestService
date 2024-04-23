@@ -1,7 +1,4 @@
 ﻿
-
-using AdsTestService.PlcStructure;
-
 namespace AdsTestService.Model
 {
     public class WorkItem

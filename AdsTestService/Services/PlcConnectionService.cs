@@ -1,10 +1,11 @@
-﻿
+﻿using PlcDataModel;
+using PlcDataModel.Abstract;
+using PlcDataModel.Interfaces;
+using PlcDataModel.PlcStructore;
+using PlcDataModel.PlcStructure;
 
-using AdsTestService.Helper;
-using AdsTestService.Interfaces;
-using AdsTestService.Model;
-using AdsTestService.PlcStructure;
 using System.Diagnostics;
+using System.Text;
 using TwinCAT.Ads;
 
 namespace AdsTestService.Services;
@@ -39,15 +40,15 @@ public class PlcConnectionService : PlcRequestHelper, IPlcConnectionService<AdsC
             {
                 RegisterNotifications();
             }
-
+            
             return Task.FromResult(_client);
+
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error connecting to PLC");
             return default!;
         }
-
     }
     public Task Disconnect()
     {
@@ -75,7 +76,7 @@ public class PlcConnectionService : PlcRequestHelper, IPlcConnectionService<AdsC
 
         _client.AdsNotificationError += (sender, e) =>
         {
-            Debug.WriteLine($"Notification error: {e.Exception}");
+            Console.WriteLine($"Notification error: {e.Exception}");
         };
     }
 
@@ -85,7 +86,6 @@ public class PlcConnectionService : PlcRequestHelper, IPlcConnectionService<AdsC
         {
             HandleRequest();
         }
-
     }
     protected override void HandleRequest()
     {
@@ -95,10 +95,11 @@ public class PlcConnectionService : PlcRequestHelper, IPlcConnectionService<AdsC
             short result = DoMeasurment("Global.stAdsTxData", "Global.stAdsTxData.stDataPayload", "Global.stAdsRxData", "Global.stAdsRxData.stDataPayload", out string readTime, out string writeTime);
             
             stopwatch.Stop();
-
+            Console.WriteLine("Result: " + result);
             if (result != 0)
             {
                 TimeSpan timeTaken = stopwatch.Elapsed;
+                Console.WriteLine($"Time Taken: {timeTaken}");
                 
                 _logger.LogInformation("{ReadTime}, {WriteTime}, {OperationTimeTaken}", readTime,writeTime,timeTaken);
             }
@@ -114,20 +115,18 @@ public class PlcConnectionService : PlcRequestHelper, IPlcConnectionService<AdsC
     }
     private short ReadPlcData(string structureHeader, string structBody, string writeHeader,string writeBody ,out string readTieme, out string writeTime)
     {
-        uint handleData = _client.CreateVariableHandle(structureHeader  );
         uint handleHeader = _client.CreateVariableHandle(structureHeader);
+        uint handleBody = _client.CreateVariableHandle(structBody);
         short ret = 0; 
         readTieme = ""; writeTime = "";
 
         try
         {
-
             var headerData = (HeaderStruct)_client.ReadAny(handleHeader, typeof(HeaderStruct));
-
-            readTieme = headerData.TimeStampLog[0].ReadTime = DateTime.UtcNow.ToString("o");
-
-            var data = (DataType)_client.ReadAny(handleData, typeof(DataType));
-
+            
+            readTieme = headerData.TimeStampLog[0].WriteTiem = TestDataHelper.GetTimeStamp();
+            
+            var data = (AdsDataType)_client.ReadAny(handleBody, typeof(AdsDataType));
             if (WritePlcData(writeHeader, writeBody,ref data, ref headerData, out writeTime))
             {
 
@@ -136,11 +135,11 @@ public class PlcConnectionService : PlcRequestHelper, IPlcConnectionService<AdsC
         }
         catch (Exception ex)
         {
-            Debug.WriteLine(ex.Message);
+            Console.WriteLine(ex.Message);
         }
         finally
         {
-            if (handleData != 0) _client.DeleteVariableHandle(handleData);
+            if (handleBody != 0) _client.DeleteVariableHandle(handleBody);
             if (handleHeader != 0) _client.DeleteVariableHandle(handleHeader);
 
         }
@@ -148,24 +147,26 @@ public class PlcConnectionService : PlcRequestHelper, IPlcConnectionService<AdsC
         return ret;
     }
 
-    private bool WritePlcData(string writeHeader,string writeBody, ref DataType body, ref HeaderStruct header, out string writeTime)
+    private bool WritePlcData(string writeHeader,string writeBody, ref AdsDataType body, ref HeaderStruct header, out string writeTime)
     {
-        uint writeHeaderHandle = _client.CreateVariableHandle(writeBody);
+        uint writeHeaderHandle = _client.CreateVariableHandle(writeHeader);
         uint writeBodyHandle = _client.CreateVariableHandle(writeBody);
         writeTime = "";
         try
         {
             if(writeHeaderHandle == 0 || writeBodyHandle == 0) return false;
 
+            TestDataHelper.SetBitInShort(ref header.ItemStatus, 1, true);// = 3;
             _client.WriteAny(writeBodyHandle, body);
-            writeTime = header.TimeStampLog[0].WriteTiem = DateTime.UtcNow.ToString("o");
+           
+            writeTime = header.TimeStampLog[0].ReadTime = TestDataHelper.GetTimeStamp(); 
             _client.WriteAny(writeHeaderHandle, header);
             
             return true;
 
         }catch(Exception ex)
         {
-            Debug.WriteLine(ex.Message);
+            Console.WriteLine(ex.Message);
             return false;
         }
         finally
@@ -175,7 +176,5 @@ public class PlcConnectionService : PlcRequestHelper, IPlcConnectionService<AdsC
         }
 
     }
-   
-  
 }
 
