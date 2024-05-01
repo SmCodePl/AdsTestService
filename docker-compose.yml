@@ -1,0 +1,8 @@
+version: '3.4'
+
+services:
+  opctestservice:
+    image: ${DOCKER_REGISTRY-}opctestservice
+    build:
+      context: .
+      dockerfile: OpcTestService/Dockerfile

@@ -1,13 +1,9 @@
 ﻿using Opc.Ua;
 using Opc.Ua.Client;
-using PlcDataModel.Interfaces;
 using PlcDataModel.Abstract;
 using Opc.Ua.Configuration;
 using PlcDataModel;
 using System.Diagnostics;
-using System.Net.NetworkInformation;
-using System.Xml.Linq;
-using System.Reflection.PortableExecutable;
 
 namespace OpcTestService.Services
 {
@@ -22,6 +18,9 @@ namespace OpcTestService.Services
 
         StatusCodeCollection status;
         DiagnosticInfoCollection results;
+        private short _itmId = 0;
+        private byte ItmStatus = 0;
+
         private List<OpcTopic> _opcTopics = new List<OpcTopic>()
         {
             new OpcTopic() {Id = 1, Name = "aVariableTypeBool",     TopicRead = "ns=4;s=Global.stOpcTxData.stDataPayload.aVariableTypeBool",    TopicWrite = "ns=4;s=Global.stOpcRxData.stDataPayload.aVariableTypeBool" },
@@ -46,83 +45,91 @@ namespace OpcTestService.Services
         {
             string userName = _configuration.GetSection("OpcConfig:UserName").Value ?? string.Empty;
             string password = _configuration.GetSection("OpcConfig:Password").Value ?? string.Empty;
-            string opcEndpoint = _configuration.GetSection("OpcConfig:EndPoint").Value ?? string.Empty;
+            string opcEndPoint = _configuration.GetSection("OpcConfig:OpcEndpoint").Value ?? string.Empty;
             bool useCredentials = _configuration.GetSection("OpcConfig:UseCredentials").Value == "true" ? true : false;
-
-            var config = new ApplicationConfiguration()
-            {
-                ApplicationName = "MyClient",
-                ApplicationUri = Utils.Format(@"urn:{0}:MyClient", System.Net.Dns.GetHostName()),
-                ApplicationType = ApplicationType.Client,
-                SecurityConfiguration = new SecurityConfiguration
-                {
-                    ApplicationCertificate = new CertificateIdentifier { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\MachineDefault", SubjectName = "MyClientSubjectName" },
-                    TrustedIssuerCertificates = new CertificateTrustList { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Certificate Authorities" },
-                    TrustedPeerCertificates = new CertificateTrustList { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Applications" },
-                    RejectedCertificateStore = new CertificateTrustList { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\RejectedCertificates" },
-                    AutoAcceptUntrustedCertificates = true
-                },
-                TransportConfigurations = new TransportConfigurationCollection(),
-                TransportQuotas = new TransportQuotas { OperationTimeout = 15000 },
-                ClientConfiguration = new ClientConfiguration { DefaultSessionTimeout = 60000 },
-                TraceConfiguration = new TraceConfiguration()
-            };
-
-             config.Validate(ApplicationType.Client).GetAwaiter().GetResult();
-
-            if (config.SecurityConfiguration.AutoAcceptUntrustedCertificates)
-            {
-                config.CertificateValidator.CertificateValidation += (s, e) => { e.Accept = (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted); };
-            }
-
-            var application = new ApplicationInstance
-            {
-                ApplicationName = "MyClient",
-                ApplicationType = ApplicationType.Client,
-                ApplicationConfiguration = config
-            };
-
-            EndpointDescription endpointDescription = CoreClientUtils.SelectEndpoint(opcEndpoint, false);
-            EndpointConfiguration endpointConfiguration = EndpointConfiguration.Create(config);
-            ConfiguredEndpoint endpoint = new ConfiguredEndpoint(null, endpointDescription, endpointConfiguration);
-
-            UserIdentity user = new UserIdentity();
-           
-            if (useCredentials)
-            {
-                user = new UserIdentity(userName, password);
-            }
-
-            // Sets whether or not the discovery endpoint is used to update the endpoint description before connecting.
-            bool updateBeforeConnect = false;
-
-            // Sets whether or not the domain in the certificate must match the endpoint used
-            bool checkDomain = false;
-
-            // The name to assign to the session
-            string sessionName = config.ApplicationName;
-
-            // The session's timeout interval
-            uint sessionTimeout = 60000;
-
-            // List of preferred locales
-            List<string> preferredLocales = null;
 
             try
             {
-                // Create the session
-               _session = Session.Create(
-                            config,
-                            endpoint,
-                            updateBeforeConnect,
-                            checkDomain,
-                            sessionName,
-                            sessionTimeout,
-                            user,
-                            preferredLocales
-                        ).Result;
+                var config = new ApplicationConfiguration()
+                {
+                    ApplicationName = "MyClient",
+                    ApplicationUri = Utils.Format(@"urn:{0}:MyClient", System.Net.Dns.GetHostName()),
+                    ApplicationType = ApplicationType.Client,
+                    SecurityConfiguration = new SecurityConfiguration
+                    {
+                        ApplicationCertificate = new CertificateIdentifier { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\MachineDefault", SubjectName = "MyClientSubjectName" },
+                        TrustedIssuerCertificates = new CertificateTrustList { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Certificate Authorities" },
+                        TrustedPeerCertificates = new CertificateTrustList { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Applications" },
+                        RejectedCertificateStore = new CertificateTrustList { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\RejectedCertificates" },
+                        AutoAcceptUntrustedCertificates = true
+                    },
+                    TransportConfigurations = new TransportConfigurationCollection(),
+                    TransportQuotas = new TransportQuotas { OperationTimeout = 15000 },
+                    ClientConfiguration = new ClientConfiguration { DefaultSessionTimeout = 60000 },
+                    TraceConfiguration = new TraceConfiguration()
+                };
+
+                config.Validate(ApplicationType.Client).GetAwaiter().GetResult();
+
+                if (config.SecurityConfiguration.AutoAcceptUntrustedCertificates)
+                {
+                    config.CertificateValidator.CertificateValidation += (s, e) => { e.Accept = (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted); };
+                }
+
+                var application = new ApplicationInstance
+                {
+                    ApplicationName = "MyClient",
+                    ApplicationType = ApplicationType.Client,
+                    ApplicationConfiguration = config
+                };
+
+                EndpointDescription endpointDescription = CoreClientUtils.SelectEndpoint(opcEndPoint, false); 
+                EndpointConfiguration endpointConfiguration = EndpointConfiguration.Create(config);
+                ConfiguredEndpoint endpoint = new ConfiguredEndpoint(null, endpointDescription, endpointConfiguration);
+
+                UserIdentity user = new UserIdentity();
                 
-                return  Task.FromResult(_session);
+                if (useCredentials)
+                {
+                    user = new UserIdentity(userName, password );
+                }
+
+                // Sets whether or not the discovery endpoint is used to update the endpoint description before connecting.
+                bool updateBeforeConnect = false;
+
+                // Sets whether or not the domain in the certificate must match the endpoint used
+                bool checkDomain = false;
+
+                // The name to assign to the session
+                string sessionName = config.ApplicationName;
+
+                // The session's timeout interval
+                uint sessionTimeout = 60000;
+
+                // List of preferred locales
+                List<string> preferredLocales = null;
+
+                try
+                {
+                    // Create the session
+                    _session = Session.Create(
+                                 config,
+                                 endpoint,
+                                 updateBeforeConnect,
+                                 checkDomain,
+                                 sessionName,
+                                 sessionTimeout,
+                                 user,
+                                 preferredLocales
+                             ).Result;
+
+                    return Task.FromResult(_session);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    return default!;
+                }
             }
             catch (Exception e)
             {
@@ -149,15 +156,56 @@ namespace OpcTestService.Services
         {
             HandleRequest();
         }
+        //protected override void HandleRequest()
+        //{
+        //    if (_session != null && _session.Connected)
+        //    {
+        //        Stopwatch stopwatch = Stopwatch.StartNew();
+
+        //        if (GetPlcRequest(out short readitmId, out byte ItmStatus))
+        //        {
+        //            string readTieme = TestDataHelper.GetTimeStamp();
+
+        //            if (readitmId != _itmId )
+        //            {
+        //                _itmId = readitmId;
+
+        //                PlcProcessHandle("ns=4;s=Global.stOpcTxData.stDataPayload.aVariableTypeBool", "ns=4;s=Global.stOpcRxData.stDataPayload.aVariableTypeBool");
+
+        //                PlcProcessHandle("ns=4;s=Global.stOpcTxData.stDataPayload.aVariableTypeInt", "ns=4;s=Global.stOpcRxData.stDataPayload.aVariableTypeInt");
+        //                PlcProcessHandle("ns=4;s=Global.stOpcTxData.stDataPayload.aVariableTypeReal", "ns=4;s=Global.stOpcRxData.stDataPayload.aVariableTypeReal");
+        //                PlcProcessHandle("ns=4;s=Global.stOpcTxData.stDataPayload.aVariableTypeString", "ns=4;s=Global.stOpcRxData.stDataPayload.aVariableTypeString");
+
+        //                // Write Plc Header Data 
+        //                PlcWriteOpcHeaderData("ns=4;s=Global.stOpcRxData.stTimeLog.sRxTimeStamp", readTieme);
+        //                PlcWriteOpcHeaderData("ns=4;s=Global.stOpcRxData.nItemID", readitmId);
+        //                PlcWriteOpcHeaderData("ns=4;s=Global.stOpcRxData.stTimeLog.sTxTimeStamp", TestDataHelper.GetTimeStamp());
+
+        //                TestDataHelper.SetBitInShort(ref ItmStatus, 1, true);
+        //                PlcWriteOpcHeaderData("ns=4;s=Global.stOpcRxData.nItemStatus", ItmStatus);
+
+        //                stopwatch.Stop();
+
+        //                TimeSpan timeTaken = stopwatch.Elapsed;
+        //                Console.WriteLine($"Time Taken: {timeTaken}");
+        //            }
+        //        }
+        //    }
+        //    else
+        //    {
+        //        Console.WriteLine("Session is not connected");
+        //    }
+        //}
+
         protected override void HandleRequest()
         {
-           if(_session != null && _session.Connected)
-           {
-               Stopwatch stopwatch = Stopwatch.StartNew();
-               
-               if (GetPlcRequest(out short itmId, out byte ItmStatus))
-               {
-                    string readTieme =  TestDataHelper.GetTimeStamp();
+            if (_session != null && _session.Connected)
+            {
+                Stopwatch stopwatch = Stopwatch.StartNew();
+
+                if (GetPlcRequest(out short itmId, out byte ItmStatus))
+                {
+                    string readTieme = TestDataHelper.GetTimeStamp();
 
                     foreach (var item in _opcTopics)
                     {
@@ -170,13 +218,13 @@ namespace OpcTestService.Services
                         {
                             PlcWriteOpcHeaderData(item.TopicWrite, readTieme);
                         }
-                        else if (item.Name == "sTxTimeStamp")
-                        {
-                            PlcWriteOpcHeaderData(item.TopicWrite, TestDataHelper.GetTimeStamp());
-                        }
                         else if (item.Name == "nItemID")
                         {
                             PlcWriteOpcHeaderData(item.TopicWrite, itmId);
+                        }
+                        else if (item.Name == "sTxTimeStamp")
+                        {
+                            PlcWriteOpcHeaderData(item.TopicWrite, TestDataHelper.GetTimeStamp());
                         }
                         else if (item.Name == "nItemStatus")
                         {
@@ -193,11 +241,11 @@ namespace OpcTestService.Services
                     TimeSpan timeTaken = stopwatch.Elapsed;
                     Console.WriteLine($"Time Taken: {timeTaken}");
                 }
-           }
-           else
-           {
+            }
+            else
+            {
                 Console.WriteLine("Session is not connected");
-           }
+            }
         }
 
         private void PlcWriteOpcHeaderData<T>(string writeTopic, T value)
@@ -246,8 +294,6 @@ namespace OpcTestService.Services
                     writeValue.Value = new Variant(readValue.Value);
 
                     _session.Write(null, new WriteValueCollection { new WriteValue { NodeId = nWrite, AttributeId = Attributes.Value, Value = writeValue } }, out status, out results);
-                    
-
 
                 }
                 else
@@ -291,21 +337,27 @@ namespace OpcTestService.Services
             }
 
         }
-        public void NetworkCheck()
+        public async Task NetworkCheck()
         {
             if (_session.Connected)
             {
                     NodeId nCheckNetwork = new NodeId("ns=4;s=Global.stOpcCheckNetwork.nCheckNetwork");
 
-                    // Read the value of the OPC nCheckNetwork
-                    checkNetworkValue = _session.ReadValue(nCheckNetwork);
-                    echoCheckNetworkValue.Value = new Variant(checkNetworkValue.Value);
+                try
+                {
+                    while(true)
+                    {
+                        
+                        // Read the value of the OPC nCheckNetwork
+                        checkNetworkValue = _session.ReadValue(nCheckNetwork);
+                        echoCheckNetworkValue.Value = new Variant(checkNetworkValue.Value);
+                        await _session.WriteAsync(null, new WriteValueCollection { new WriteValue { NodeId = new NodeId("ns=4;s=Global.stOpcCheckNetwork.nEchoCheckNetwork"), AttributeId = Attributes.Value, Value = echoCheckNetworkValue } }, CancellationToken.None);
+                    }
 
-                    _session.Write(null, new WriteValueCollection { new WriteValue { NodeId = new  NodeId("ns=4;s=Global.stOpcCheckNetwork.nEchoCheckNetwork") , AttributeId = Attributes.Value, Value = echoCheckNetworkValue } }, out status, out results);
-                    // Print the value
-                    Console.WriteLine("Value: " + checkNetworkValue.Value);
-
-
+                }catch(Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
             }
         }
 
@@ -313,7 +365,7 @@ namespace OpcTestService.Services
     internal class OpcConfirm
     {
         public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; set; }
         public string TopicWrite { get; set; } = string.Empty;
     }
     internal class OpcTopic

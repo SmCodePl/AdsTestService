@@ -3,9 +3,7 @@ using PlcDataModel.Abstract;
 using PlcDataModel.Interfaces;
 using PlcDataModel.PlcStructore;
 using PlcDataModel.PlcStructure;
-
 using System.Diagnostics;
-using System.Text;
 using TwinCAT.Ads;
 
 namespace AdsTestService.Services;

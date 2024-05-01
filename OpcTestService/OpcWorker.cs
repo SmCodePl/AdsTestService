@@ -3,6 +3,7 @@
 using Opc.Ua.Client;
 using OpcTestService.Services;
 using PlcDataModel.PlcStructure.Model;
+using System.Diagnostics;
 
 namespace OpcTestService
 {
@@ -18,8 +19,6 @@ namespace OpcTestService
         }
         public override Task StartAsync(CancellationToken cancellationToken)
         {
-            _session = _testService.Connect().Result;
-
             return base.StartAsync(cancellationToken);
         }
         public override Task StopAsync(CancellationToken cancellationToken)
@@ -33,8 +32,13 @@ namespace OpcTestService
             {
                 if(_session != null && _session.Connected)
                 {
-                    _testService.NetworkCheck();
+                    Stopwatch stopwatch = Stopwatch.StartNew();
+                    //await _testService.NetworkCheck().ConfigureAwait(false);
                     _testService.DoEvent();
+                    stopwatch.Stop();
+
+                    TimeSpan timeTaken = stopwatch.Elapsed;
+                    Console.WriteLine($"all Operation: {timeTaken}");
                 }
                 else 
                 {
@@ -46,7 +50,15 @@ namespace OpcTestService
 
         private async Task ConnectToOpcServerAsync()
         {
-          _session =  await _testService.Connect();
+            try
+            {
+                _session = await _testService.Connect();
+                _ = Task.Run(async () => await _testService.NetworkCheck());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while connecting to OPC server");
+            }
 
         }
     }
